@@ -92,32 +92,23 @@ from sklearn.model_selection import KFold,cross_val_score
 import xgboost as xgb
 
 
-# train model
+#Define model
 model = xgb.XGBClassifier(max_depth= 10,   min_child_weight= 3,\
                          subsample= 0.5, \
                          objective= 'multi:softprob', silent= 1)
 
+
+#Split train and test 
+from sklearn.model_selection import train_test_split
+
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2)
+
+#Train the model
+model.fit(X_train,y_train,eval_metric='merror')
+
+#Check against test sample
 seed = 5
 kfold = KFold(n_splits=10, shuffle=True, random_state=seed)
-
-results = cross_val_score(model, X, y, cv=kfold)
-
-
-print ("Average Accuracy = ",np.average(results))
-
-model.fit(X,y)
-seed = 5
-kfold = KFold(n_splits=10, shuffle=True, random_state=seed)
-
-scores = cross_val_score(model, X.iloc[0:2861,:], y[0:2861,], cv=kfold)
-
+scores = cross_val_score(model, X_test, y_test, cv=kfold)
 
 print ("Average Accuracy = ",np.mean(scores))
-
-pred = model.predict(X.iloc[2861:,:])
-res = pd.DataFrame()
-res['Predictions'] = pred
-res['Actual'] = y[2861:,]
-res['Correct'] = res['Predictions']==res['Actual']
-res.describe()
-
