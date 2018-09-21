@@ -31,8 +31,7 @@ kerasModel.loadModel('kerasModelLSTM')
 #assign train dataframe and define which columns have the data
 kerasModel.text_df = test_df
 kerasModel.text_colname = "review"
-kerasModel.num_classes = 3
-kerasModel.sentiment_colname = "sentiment"
+
 
 
 #Get padded docs

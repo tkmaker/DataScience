@@ -6,13 +6,19 @@ Created on Sat Sep 15 11:13:34 2018
 """
 
 from numpy import zeros
+from bs4 import BeautifulSoup
+import re
+from nltk.corpus import stopwords
+import string
+from nltk.stem.porter import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential
 from keras.layers import Dense,Flatten,Embedding,LSTM
 from keras.callbacks import EarlyStopping
 from keras.models import load_model
-
 import pickle
 
 import pandas as pd
@@ -66,6 +72,47 @@ class kerasSentiment (object):
         #Batch size
         self.batch_size = 64
            
+    def  cleanup_review (self,text,remove_stop_words=False,stemmer=False,lemma=False):
+        # Function to clean text in a document and return a sentence for sentiment analysis
+        #
+        # Remove HTML
+        text = BeautifulSoup(text,"lxml").get_text()
+        #  
+        # Remove non-letters
+        text = re.sub("[^a-zA-Z]"," ", text)
+        #
+        # Convert words to lower case 
+        words= text.lower()
+    
+        #Optionally lemmatize words (false by default)
+        if lemma:
+            lemmatizer = WordNetLemmatizer()
+            words = lemmatizer.lemmatize(words)
+        
+        #tokenize words
+        words = words.split()
+    
+        # .remove punctuation from each word
+        table = str.maketrans('', '', string.punctuation)
+        words = [w.translate(table) for w in words]
+
+        # Optionally remove stop words (false by default)
+        if remove_stop_words:
+            stops = set(stopwords.words("english"))
+            words = [w for w in words if not w in stops]
+    
+
+        #Optionally stem words (false by default)
+        if stemmer:
+            porter = PorterStemmer()
+            words = [porter.stem(word) for word in words]
+
+   
+        #Recombine words into a sentence
+        sentence = "".join([" "+i if not i.startswith("'") and i not in string.punctuation else i for i in words]).strip()
+    
+        return(sentence)
+
     def encodeTrainText (self) :
         
         print ("Encoding and padding text..\n")
