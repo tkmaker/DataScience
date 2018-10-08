@@ -22,14 +22,15 @@ train_samples = 15000
 train_df = data_df.iloc[0:train_samples,:]
 
 #replace empty cells with Nan
-train_df.review.replace('', np.nan, inplace=True)
+train_df = train_df.review.replace('', np.nan)
+
 #drop null rows
 train_df.dropna(inplace=True)
 
 #Instantiate model
 kerasModel = kerasSentiment()
 
-train_df['review'] = train_df.review.apply(lambda x : kerasModel.cleanup_review(x))
+train_df.loc[:,'review'] = train_df.review.apply(lambda x : kerasModel.cleanup_review(x))
 
 #assign train dataframe and define which columns have the data
 kerasModel.text_df = train_df
