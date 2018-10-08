@@ -215,7 +215,7 @@ class kerasSentiment (object):
               input_length=self.max_sentence_length, trainable=False)
         else :
             e = Embedding(self.vocab_size, self.embeddingDim,  \
-              input_length=self.max_sentence_length, trainable=False)
+              input_length=self.max_sentence_length, trainable=True)
             
         self.model.add(e)
         #self.model.add(Flatten())
