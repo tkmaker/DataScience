@@ -18,19 +18,20 @@ data_df = pd.read_csv( "labelledTrainData.tsv", header=0,
  delimiter="\t", quoting=3 )
 
 
-train_samples = 15000
+train_pct = 0.8
+train_samples = np.int(train_pct * data_df.shape[0])
 train_df = data_df.iloc[0:train_samples,:]
 
 #replace empty cells with Nan
-train_df = train_df.review.replace('', np.nan)
-
+train_df.review.replace('', np.nan, inplace=True)
 #drop null rows
 train_df.dropna(inplace=True)
 
 #Instantiate model
 kerasModel = kerasSentiment()
 
-train_df.loc[:,'review'] = train_df.review.apply(lambda x : kerasModel.cleanup_review(x))
+train_df['review'] = train_df.review.apply(lambda x : kerasModel.cleanup_review(x))
+
 
 #assign train dataframe and define which columns have the data
 kerasModel.text_df = train_df

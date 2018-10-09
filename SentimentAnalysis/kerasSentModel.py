@@ -92,9 +92,7 @@ class kerasSentiment (object):
         #tokenize words
         words = words.split()
     
-        # .remove punctuation from each word
-        table = str.maketrans('', '', string.punctuation)
-        words = [w.translate(table) for w in words]
+      
 
         # Optionally remove stop words (false by default)
         if remove_stop_words:
@@ -215,14 +213,22 @@ class kerasSentiment (object):
               input_length=self.max_sentence_length, trainable=False)
         else :
             e = Embedding(self.vocab_size, self.embeddingDim,  \
-              input_length=self.max_sentence_length, trainable=False)
+              input_length=self.max_sentence_length, trainable=True)
             
         self.model.add(e)
         #self.model.add(Flatten())
         self.model.add(LSTM(units=self.lstm_units,dropout=self.lstm_dropout,\
                             recurrent_dropout=self.lstm_dropout))
 
-        output_dim = self.num_classes - 1
+        #Output layer number of units depends on the number of classes
+        if (self.num_classes > 2 or self.num_classes == 1) :
+            output_dim = self.num_classes
+        elif self.num_classes ==2  :
+            output_dim = self.num_classes - 1 
+        else :
+            print ("Invalid number of classes = ",self.num_classes)
+            exit
+            
         
         #Use softmax for multiclass and sigmoid for binary classification
         if (self.num_classes > 2) :

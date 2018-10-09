@@ -13,6 +13,13 @@ from keras.layers import Dense,Flatten,Embedding,LSTM
 from keras.callbacks import EarlyStopping
 from keras.models import load_model
 
+from bs4 import BeautifulSoup
+import re
+from nltk.corpus import stopwords
+import string
+from nltk.stem.porter import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+
 import pickle
 
 import pandas as pd
@@ -66,6 +73,45 @@ class kerasSentiment (object):
         #Batch size
         self.batch_size = 64
            
+    def  cleanup_review (self,text,remove_stop_words=False,stemmer=False,lemma=False):
+        # Function to clean text in a document and return a sentence for sentiment analysis
+        #
+        # Remove HTML
+        text = BeautifulSoup(text,"lxml").get_text()
+        #  
+        # Remove non-letters
+        text = re.sub("[^a-zA-Z]"," ", text)
+        #
+        # Convert words to lower case 
+        words= text.lower()
+    
+        #Optionally lemmatize words (false by default)
+        if lemma:
+            lemmatizer = WordNetLemmatizer()
+            words = lemmatizer.lemmatize(words)
+        
+        #tokenize words
+        words = words.split()
+    
+      
+
+        # Optionally remove stop words (false by default)
+        if remove_stop_words:
+            stops = set(stopwords.words("english"))
+            words = [w for w in words if not w in stops]
+    
+
+        #Optionally stem words (false by default)
+        if stemmer:
+            porter = PorterStemmer()
+            words = [porter.stem(word) for word in words]
+
+   
+        #Recombine words into a sentence
+        sentence = "".join([" "+i if not i.startswith("'") and i not in string.punctuation else i for i in words]).strip()
+    
+        return(sentence)
+        
     def encodeTrainText (self) :
         
         print ("Encoding and padding text..\n")
@@ -170,15 +216,22 @@ class kerasSentiment (object):
               input_length=self.max_sentence_length, trainable=False)
         else :
             e = Embedding(self.vocab_size, self.embeddingDim,  \
-              input_length=self.max_sentence_length, trainable=False)
+              input_length=self.max_sentence_length, trainable=True)
             
         self.model.add(e)
         #self.model.add(Flatten())
         self.model.add(LSTM(units=self.lstm_units,dropout=self.lstm_dropout,\
                             recurrent_dropout=self.lstm_dropout))
 
-        output_dim = self.num_classes - 1
-        
+        #Output layer number of units depends on the number of classes
+        if (self.num_classes > 2 or self.num_classes == 1) :
+            output_dim = self.num_classes
+        elif self.num_classes == 2  :
+            output_dim = self.num_classes - 1 
+        else :
+            print ("Invalid number of classes = ",self.num_classes)
+            exit
+            
         #Use softmax for multiclass and sigmoid for binary classification
         if (self.num_classes > 2) :
             self.model.add(Dense(output_dim, activation='softmax'))
