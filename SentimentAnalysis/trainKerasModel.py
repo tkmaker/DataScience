@@ -51,7 +51,7 @@ padded_docs, labels= kerasModel.encodeTrainText()
 
 #Create the model
 #kerasModel.createModel(embedding_matrix=embedding_matrix,useTrainedEmbedding=True)
-kerasModel.createModel()
+kerasModel.createBRNNModel()
 
 #Model hyperparameters
 kerasModel.lstm_units = 10

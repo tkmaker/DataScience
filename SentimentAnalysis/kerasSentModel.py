@@ -16,10 +16,11 @@ from nltk.stem import WordNetLemmatizer
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential
-from keras.layers import Dense,Flatten,Embedding,LSTM
+from keras.layers import Dense,Flatten,Embedding,LSTM,Dropout,Bidirectional,TimeDistributed,Reshape
 from keras.callbacks import EarlyStopping
 from keras.models import load_model
 import pickle
+from tcn import tcn
 
 import pandas as pd
 import numpy as np
@@ -199,7 +200,7 @@ class kerasSentiment (object):
 
    
     
-    def createModel (self, embedding_matrix=[],useTrainedEmbedding=False)  :
+    def createLSTMModel (self, embedding_matrix=[],useTrainedEmbedding=False)  :
         
         print ("Creating Keras model..\n")
         
@@ -243,7 +244,113 @@ class kerasSentiment (object):
         
     
     
- 
+ 	def createBRNNModel (self, embedding_matrix=[],useTrainedEmbedding=False)  :
+        
+        print ("Creating Keras model..\n")
+        
+
+        #If using preTrained embeddings like Glove or Word2Vec, use embeddings as weight
+        #Else learn weights
+        if useTrainedEmbedding:
+            e = Embedding(input_dim=self.vocab_size, output_dim=self.embeddingDim, weights=[embedding_matrix], \
+              input_length=self.max_sentence_length, trainable=False)
+        else :
+            e = Embedding(input_dim=self.vocab_size, output_dim=self.embeddingDim,  \
+              input_length=self.max_sentence_length, trainable=True)
+            
+        self.model.add(e)
+
+      
+        #add LSTM layer
+        self.model.add(Bidirectional(LSTM(units=self.lstm_units,dropout=self.lstm_dropout,\
+                            recurrent_dropout=self.lstm_dropout,return_sequences=True)))
+
+  
+        #Reshape from 2D to 3D tensor for TimeDist Layer
+        self.model.add(Reshape((self.max_sentence_length,1,self.embeddingDim)))
+        
+       
+        #Add time distributed layer
+        self.model.add(TimeDistributed(Dense(1, activation='relu'),\
+                                           input_shape=(self.max_sentence_length,1,self.embeddingDim)))
+        
+        self.model.add(Dropout(0.4))
+        #Flatten for final layer
+        self.model.add(Flatten())
+
+        if (self.num_classes > 2 or self.num_classes == 1) :
+            output_dim = self.num_classes
+        elif self.num_classes ==2  :
+            output_dim = self.num_classes - 1 
+        else :
+            print ("Invalid number of classes = ",self.num_classes)
+            exit
+        
+        #Final output layer
+        #Use softmax for multiclass and sigmoid for binary classification
+        if (self.num_classes > 2) :
+            self.model.add(Dense(output_dim, activation='softmax'))
+        else :
+            self.model.add(Dense(output_dim, activation='sigmoid'))
+        
+        
+
+        # compile the model
+        self.model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
+        # summarize the model
+        print(self.model.summary())
+        
+    
+    def createTCNModel (self, embedding_matrix=[],useTrainedEmbedding=False)  :
+        
+        print ("Creating Keras model..\n")
+        
+        
+        
+            
+
+        i = Input(batch_shape=(None, self.max_sentence_length))
+        
+        #If using preTrained embeddings like Glove or Word2Vec, use embeddings as weight
+        #Else learn weights
+        if useTrainedEmbedding:
+            e = Embedding(self.vocab_size, self.embeddingDim, weights=[embedding_matrix], \
+              input_length=self.max_sentence_length, trainable=False)(i)
+        else :
+            e = Embedding(self.vocab_size, self.embeddingDim,  \
+              input_length=self.max_sentence_length, trainable=True)(i)
+            
+        x = tcn.TCN(e, nb_filters=64, nb_stacks= 2, kernel_size=2, \
+                activation='tanh',dilations=[1,2,4,8,16,32,64], return_sequences=False)
+       
+
+        #Add ANN layer with dropout
+        x = Dense(units=20,activation='relu')(x)
+        x = Dropout(0.5)(x)
+        
+        
+        if (self.num_classes > 2 or self.num_classes == 1) :
+            output_dim = self.num_classes
+        elif self.num_classes ==2  :
+            output_dim = self.num_classes - 1 
+        else :
+            print ("Invalid number of classes = ",self.num_classes)
+            exit
+        
+        #Final output layer
+        #Use softmax for multiclass and sigmoid for binary classification
+        if (self.num_classes > 2) :
+            x = Dense(output_dim, activation='softmax')(x)
+        else :
+            x = Dense(output_dim, activation='sigmoid')(x)
+        
+        self.model = Model(inputs=[i], outputs=[x])
+
+        # compile the model
+        self.model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
+        # summarize the model
+        print(self.model.summary())
+
 
     def trainModel (self,padded_docs, labels):
         
